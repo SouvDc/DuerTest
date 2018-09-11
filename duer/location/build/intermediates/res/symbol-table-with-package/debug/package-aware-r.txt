@@ -1,0 +1,2 @@
+com.baidu.duer.dcs.location
+int string app_name 0x7f150001

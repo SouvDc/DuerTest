@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">DuerTest</string>
+
+    <string name="inputed_text_cannot_be_empty">输入的内容不能为空</string>
+
+    <string name="tts_info_volume_hint">声音大小（0&#8211;9）</string>
+    <string name="tts_info_speed_hint">语速（0&#8211;9）</string>
+    <string name="tts_info_pitch_hint">语调（0&#8211;9）</string>
+    <string name="tts_info_speaker_hint">声音类型（0&#8211;4）</string>
+    <string name="tts_info_aue_hint">音频格式</string>
+    <string name="tts_info_rate_hint">码率</string>
+    <string name="tts_info_xml_hint">是否为xml</string>
+    <string name="tts_info_reset_hint">重置</string>
 </resources>

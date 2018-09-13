@@ -3,66 +3,150 @@ package com.dc.duertest;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.baidu.duer.dcs.api.DcsSdkBuilder;
-import com.baidu.duer.dcs.api.IDcsSdk;
-import com.baidu.duer.dcs.api.IMessageSender;
-import com.baidu.duer.dcs.api.config.DefaultSdkConfigProvider;
-import com.baidu.duer.dcs.api.config.SdkConfigProvider;
-import com.baidu.duer.dcs.api.recorder.AudioRecordImpl;
-import com.baidu.duer.dcs.api.recorder.BaseAudioRecorder;
-import com.baidu.duer.dcs.devicemodule.custominteraction.CustomUserInteractionDeviceModule;
-import com.baidu.duer.dcs.framework.DcsSdkImpl;
-import com.baidu.duer.dcs.framework.ILoginListener;
-import com.baidu.duer.dcs.framework.InternalApi;
-import com.baidu.duer.dcs.systeminterface.IOauth;
-import com.baidu.duer.dcs.util.HttpProxy;
-import com.baidu.duer.dcs.util.dispatcher.DialogRequestIdHandler;
-import com.baidu.duer.dcs.util.util.LogUtil;
-import com.baidu.duer.dcs.util.util.StandbyDeviceIdUtil;
-import com.dc.duer.OAuth;
-import com.dc.duer.sdk.devicemodule.screen.ScreenDeviceModule;
-import com.dc.duer.sdk.devicemodule.screen.message.HtmlPayload;
+import com.cnbot.aiui.AIUINlpUtil;
+import com.cnbot.aiui.bean.AiuiNlpResult;
 import com.dc.duer.sdk.devicemodule.screen.message.RenderCardPayload;
-import com.dc.duer.sdk.devicemodule.screen.message.RenderHintPayload;
-import com.dc.duer.sdk.devicemodule.screen.message.RenderVoiceInputTextPayload;
+import com.dc.duertest.bean.Msg;
+import com.dc.duertest.listener.SpeechAsrListener;
+import com.dc.duertest.utils.BaiDuASR;
 
-import static com.dc.duertest.BuildConfig.APP_KEY;
-import static com.dc.duertest.BuildConfig.CLIENT_ID;
-import static com.dc.duertest.BuildConfig.PID;
+import java.util.ArrayList;
+import java.util.List;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements DuerUtils.RenderCardPayLoadResultListener, SpeechAsrListener,
+        AiuiNlpResult{
     private static final String TAG = MainActivity.class.getSimpleName();
+    @BindView(R.id.main_recyclerView)
+    android.support.v7.widget.RecyclerView mainRecyclerView;
+    @BindView(R.id.tv_asr_result)
+    TextView tvAsrResult;
+    @BindView(R.id.btn_voice_input)
+    Button btnVoiceInput;
+    @BindView(R.id.main_input_edit)
+    EditText mainInputEdit;
+    @BindView(R.id.main_send_bt)
+    Button mainSendBt;
+    @BindView(R.id.main_stop_asr_bt)
+    Button mainStopAsrBt;
+    @BindView(R.id.main_bottom)
+    LinearLayout mainBottom;
+    @BindView(R.id.et_input)
+    EditText etInput;
+    @BindView(R.id.btn_send)
+    Button btnSend;
 
-    private EditText inputEt;
-    private Button   sendBtn;
+    //定义对象
+    private final List<Msg> history = new ArrayList<>();
+    private ChatHistoryAdapter adapter;
+    private BaiDuASR baiduASR = null;
+    private DuerUtils duerUtils = null;
 
-    protected ScreenDeviceModule screenDeviceModule;
-    protected IDcsSdk dcsSdk;
+    //属性定义
+    private String inputStr = ""; //语音识别或者手动输入需要查询的内容
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
+
         initView();
-        initSdk();
-        sdkRun();
+        init();
+
+        initListener();
+    }
+
+
+    private void init() {
+        //初始化ASR
+        baiduASR = new BaiDuASR(MainActivity.this);
+        baiduASR.initASR();
+        //初始化DuerOS
+        duerUtils = new DuerUtils();
+        duerUtils.initSDK();
+        duerUtils.sdkRun();
+        duerUtils.setRenerCardListener(this);
+
+
+        AIUINlpUtil.getInstance(this).createAgent();
+
+    }
+
+    private void initListener() {
+        BaiDuASR.setAsrListener(this);
+
+        duerUtils.setRenerCardListener(this);
+
+        //初始化AIUI
+        AIUINlpUtil.getInstance(this).setListener(this);
+
+        duerUtils.addRequestListener(new DuerUtils.DcsRequestBodyStatusListener() {
+            @Override
+            public void speechStarted() {
+                btnVoiceInput.setText("播报中...");
+            }
+
+            @Override
+            public void speechFinished() {
+                btnVoiceInput.setText("点击说话...");
+            }
+        });
     }
 
     private void initView() {
-        inputEt = (EditText) findViewById(R.id.et_input);
-        sendBtn = (Button) findViewById(R.id.btn_send);
-        sendBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String inputText = inputEt.getText().toString().trim();
+
+        mainRecyclerView.setHasFixedSize(true);
+        mainRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new ChatHistoryAdapter(this, history);
+        mainRecyclerView.setAdapter(adapter);
+    }
+
+
+    /**
+     * @descriptoin 开始录音
+     * @author dc
+     * @date 2018/7/26 10:45
+     */
+    private void startVoice() {
+        duerUtils.stopSpeech();
+        baiduASR.startASR();
+        btnVoiceInput.setText("开始录音");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        duerUtils.release();
+    }
+
+    @OnClick({R.id.btn_voice_input, R.id.main_send_bt, R.id.main_stop_asr_bt, R.id.btn_send})
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.btn_voice_input:
+                tvAsrResult.setText("");
+                startVoice();
+                break;
+            case R.id.main_send_bt:
+                break;
+            case R.id.main_stop_asr_bt:
+                break;
+            case R.id.btn_send:
+                String inputText = etInput.getText().toString().trim();
                 if (TextUtils.isEmpty(inputText)) {
                     Toast.makeText(MainActivity.this, "发送内容不能为空", Toast.LENGTH_SHORT).show();
                     return;
@@ -71,172 +155,131 @@ public class MainActivity extends AppCompatActivity {
 //                inputEt.getEditableText().clear();
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context
                         .INPUT_METHOD_SERVICE);
-                imm.hideSoftInputFromWindow(inputEt.getWindowToken(), 0);
+                imm.hideSoftInputFromWindow(etInput.getWindowToken(), 0);
 
-                getInternalApi().sendQuery(inputText);
-            }
-        });
+                duerUtils.sendDuer(inputText);
+                break;
+        }
     }
 
-    protected void initSdk() {
-        // 第一步初始化sdk
-        // BaseAudioRecorder audioRecorder = new PcmAudioRecorderImpl(); pcm 输入方式
-        BaseAudioRecorder audioRecorder = new AudioRecordImpl();
-        IOauth oauth = OAuth.getOauth(Constant.CLIENT_ID);
+    @Override
+    public void asrResult(String asr, boolean isFinal) {
+        //识别结果、
+        inputStr = asr;
+        if(isFinal){
+            tvAsrResult.setText(inputStr);
+//            duerUtils.sendDuer(inputStr);
+            aiuiNlp(inputStr);
+            notifyInputMsg(inputStr);
+        } else {
+            tvAsrResult.setText(inputStr);
+        }
+    }
 
-        // proxyIp 为代理IP
-        // proxyPort  为代理port
-        HttpProxy httpProxy = new HttpProxy("172.24.194.28", 8888);
+    @Override
+    public void asrRecording(boolean recording) {
+        if (recording) {
+            btnVoiceInput.setText("录音中...");
+        }
+    }
 
-        // SDK配置，ClientId、语音PID、代理等
-        SdkConfigProvider sdkConfigProvider = getSdkConfigProvider();
-        // 构造dcs sdk
-        DcsSdkBuilder builder = new DcsSdkBuilder();
-        dcsSdk = builder.withSdkConfig(sdkConfigProvider)
-                .withOauth(oauth)
-                .withAudioRecorder(audioRecorder)
-                // 1.withDeviceId设置设备唯一ID
-                // 2.强烈建议！！！！
-                //   如果开发者清晰的知道自己设备的唯一id，可以按照自己的规则传入
-                //   需要保证设置正确，保证唯一、刷机和升级后不变
-                // 3.sdk提供的方法，但是不保证所有的设别都是唯一的
-                //   StandbyDeviceIdUtil.getStandbyDeviceId()
-                //   该方法的算法是MD5（android_id + imei + Mac地址）32位  +  32位UUID总共64位
-                //   生成：首次按照上述算法生成ID，生成后依次存储apk内部->存储系统数据库->存储外部文件
-                //   获取：存储apk内部->存储系统数据库->存储外部文件，都没有则重新生成
-                .withDeviceId(StandbyDeviceIdUtil.getStandbyDeviceId())
-                // 设置音乐播放器的实现，sdk 内部默认实现为MediaPlayerImpl
-                // .withMediaPlayer(new MediaPlayerImpl(AudioManager.STREAM_MUSIC))
-                .build();
+    @Override
+    public void asrRecognizing(boolean recognizing) {
+        if (recognizing) {
+            btnVoiceInput.setText("识别中...");
+        }
+    }
 
-        // 设置Oneshot
-        getInternalApi().setSupportOneshot(false);
-        // ！！！！临时配置需要在run之前设置！！！！
-        // 临时配置开始
-        // 暂时没有定的API接口，可以通过getInternalApi设置后使用
-        // 设置唤醒参数后，初始化唤醒
-        getInternalApi().initWakeUp();
-//        getInternalApi().setOnPlayingWakeUpSensitivity(WAKEUP_ON_PLAYING_SENSITIVITY);
-//        getInternalApi().setOnPlayingWakeUpHighSensitivity(WAKEUP_ON_PLAYING_HIGH_SENSITIVITY);
-//        getInternalApi().setAsrMode(getAsrMode());
-        // 测试数据，具体bduss值
-        // getInternalApi().setBDuss("");
-        // 临时配置结束
-        // dbp平台
-        // getInternalApi().setDebugBot("f15be387-1348-b71b-2ae5-8f19f2375ea1");
+    @Override
+    public void asrThinking(boolean thinking) {
+        if (thinking) {
+            btnVoiceInput.setText("思考中...");
+        }
+    }
 
-        // 第二步：可以按需添加内置端能力和用户自定义端能力（需要继承BaseDeviceModule）
-        // 屏幕展示
-        IMessageSender messageSender = getInternalApi().getMessageSender();
-        // 上屏
-        screenDeviceModule = new ScreenDeviceModule(messageSender);
-        screenDeviceModule.addScreenListener(screenListener);
-        dcsSdk.putDeviceModule(screenDeviceModule);
+    @Override
+    public void asrFinish(boolean finish) {
+        if (finish) {
+            btnVoiceInput.setText("点击说话");
+            // TODO: dc 2018/7/27 连续对话，test
+            /*if(ConstantToken.NLPMODEL.equals(CONTINUITY)){
+                baiduASR.startASR();
+            }*/
+        }
+    }
 
-        // 在线返回文本的播报，eg:你好，返回你好的播报
-        DialogRequestIdHandler dialogRequestIdHandler =
-                ((DcsSdkImpl) dcsSdk).getProvider().getDialogRequestIdHandler();
-        CustomUserInteractionDeviceModule customUserInteractionDeviceModule =
-                new CustomUserInteractionDeviceModule(messageSender, dialogRequestIdHandler);
-        dcsSdk.putDeviceModule(customUserInteractionDeviceModule);
+    /**
+     * 讯飞nlp
+     *
+     * @param msg 百度asr或文本框输入
+     */
+    private void aiuiNlp(String msg) {
+        //文本语义
+        if (!TextUtils.isEmpty(msg)) {
+            AIUINlpUtil.getInstance(this).startTextNlp(msg);
+        } else {
+            Toast.makeText(this, "发送内容不能为空", Toast.LENGTH_SHORT).show();
+        }
+    }
 
-        // 扩展自定义DeviceModule,eg...
-        addOtherDeviceModule(dcsSdk, messageSender);
-        // 获取设备列表
-        // getInternalApi().getSmartHomeManager().getDeviceList(null, null);
+    @Override
+    public void aiuiNlpResult(int rc, String result) {
+        Log.e(TAG, "AIUI_Result = " + result + "    rc = " + rc);
+        if(rc == 4){
+            duerUtils.sendDuer(inputStr);
+        } else {
+            // AIUI语义结果
+            notifyOutputMsg(result);
+            baiduASR.stopASR();
+           duerUtils.startSpeech(result);
+        }
+    }
+
+    @Override
+    public void onRenDerCardResult(RenderCardPayload renderCardPayload) {
+        Log.e(TAG, "onRenDerCardResult: " + renderCardPayload.content);
+//        btnVoiceInput.setText("播报中...");
+        String content = renderCardPayload.content;
+        if(TextUtils.isEmpty(content)){
+            content = "暂不支持该技能";
+        }
+        notifyOutputMsg(content);
+
     }
 
 
-    protected void sdkRun() {
-        // 第三步，将sdk跑起来
-        ((DcsSdkImpl) dcsSdk).getInternalApi().login(new ILoginListener() {
-            @Override
-            public void onSucceed(String accessToken) {
-                dcsSdk.run(null);
-                Toast.makeText(MainActivity.this.getApplicationContext(), "登录成功", Toast
-                        .LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onFailed(String errorMessage) {
-                Toast.makeText(MainActivity.this.getApplicationContext(), "登录失败", Toast
-                        .LENGTH_SHORT).show();
-                Log.e(TAG, "login onFailed. ");
-                finish();
-            }
-
-            @Override
-            public void onCancel() {
-                Toast.makeText(MainActivity.this.getApplicationContext(), "登录被取消", Toast
-                        .LENGTH_SHORT).show();
-                Log.e(TAG, "login onCancel. ");
-                finish();
-            }
-        });
-    }
-
-    protected SdkConfigProvider getSdkConfigProvider() {
-        return new DefaultSdkConfigProvider() {
-            @Override
-            public String clientId() {
-                return CLIENT_ID;
-            }
-
-            @Override
-            public int pid() {
-                return PID;
-            }
-
-            @Override
-            public String appKey() {
-                return APP_KEY;
-            }
-        };
-    }
-
-    public InternalApi getInternalApi() {
-        return ((DcsSdkImpl) dcsSdk).getInternalApi();
-    }
-
-    protected void addOtherDeviceModule(IDcsSdk dcsSdk, IMessageSender messageSender) {
+    /**
+     * 在语义分析之前，将输入信息更新到界面上
+     *
+     * @param input 百度asr输入或输入框输入
+     */
+    private void notifyInputMsg(String input) {
+        mainInputEdit.setText("");
+        history.add(new Msg(input, Msg.INPUT_TYPE));
+        adapter.notifyDataSetChanged();
+        mainRecyclerView.scrollToPosition(history.size() - 1);
 
     }
 
     /**
-     * asr的识别类型-在线or离线
+     * 在语义分析结束之后，将输入信息更新到界面上，并播放百度tts
      *
-     * @return
+     * @param output 灵聚nlp或者讯飞nlp识别结果
      */
-//    public abstract int getAsrMode();
+    private void notifyOutputMsg(String output) {
+        btnVoiceInput.setText("点击说话...");
+        history.add(new Msg(output, Msg.OUTPUT_TYPE));
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                adapter.notifyDataSetChanged();
+                mainRecyclerView.scrollToPosition(history.size() - 1);
+            }
+        });
 
-
-    private ScreenDeviceModule.IScreenListener screenListener = new ScreenDeviceModule.IScreenListener() {
-        @Override
-        public void onRenderVoiceInputText(RenderVoiceInputTextPayload payload) {
-            handleRenderVoiceInputTextPayload(payload);
-        }
-
-        @Override
-        public void onHtmlPayload(HtmlPayload htmlPayload) {
-//            handleHtmlPayload(htmlPayload);
-        }
-
-        @Override
-        public void onRenderCard(RenderCardPayload renderCardPayload) {
-            Log.e(TAG, "onRenderCard" + renderCardPayload.content);
-        }
-
-        @Override
-        public void onRenderHint(RenderHintPayload renderHintPayload) {
-
-        }
-    };
-
-    private void handleRenderVoiceInputTextPayload(RenderVoiceInputTextPayload payload) {
-        Log.e(TAG, "handleRenderVoiceInputTextPayload: " + payload.text);
-        if (payload.type == RenderVoiceInputTextPayload.Type.FINAL) {
-            LogUtil.dc("ASR-FINAL-RESULT", payload.text);
-        }
+        // TODO: dc 2018/7/27 连续对话，test
+        /*if (ConstantToken.NLPMODEL.equals(CONTINUITY)) {
+            baiduASR.startASR();
+        }*/
     }
-
 }

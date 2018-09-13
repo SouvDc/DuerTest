@@ -1,1 +1,1 @@
-include ':app', ':duer', ':location'
+include ':app', ':duer', ':location', ':aiui'

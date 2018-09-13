@@ -8,12 +8,69 @@
     android:orientation="vertical"
     >
 
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/main_recyclerView"
+        android:layout_margin="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.0"
+        />
+
+    <TextView
+        android:id="@+id/tv_asr_result"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="识别结果"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginBottom="10dp"
+        />
+    <LinearLayout
+        android:id="@+id/main_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginBottom="10dp"
+        >
+
+        <Button
+            android:id="@+id/btn_voice_input"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="点击说话"
+            />
+
+        <EditText
+            android:id="@+id/main_input_edit"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.0"
+            android:hint="中文输入"
+            />
+        <Button
+            android:id="@+id/main_send_bt"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="发送"
+            />
+        <Button
+            android:id="@+id/main_stop_asr_bt"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="停止识别"
+            />
+    </LinearLayout>
     <EditText
         android:id="@+id/et_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Hello World!"
-        android:layout_margin="16dp"/>
+        android:layout_margin="16dp"
+        android:visibility="gone"
+        />
 
     <Button
         android:id="@+id/btn_send"
@@ -21,5 +78,6 @@
         android:layout_height="wrap_content"
         android:text="发送"
         android:layout_margin="16dp"
+        android:visibility="gone"
         />
 </LinearLayout>

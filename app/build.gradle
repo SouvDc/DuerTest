@@ -39,6 +39,9 @@ dependencies {
     compile 'com.jakewharton:butterknife:8.4.0'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.4.0'
 
+    compile 'com.github.bumptech.glide:glide:3.7.0'
+    compile 'com.bm.photoview:library:1.4.1' //图片显示
+
     compile 'com.google.code.gson:gson:2.8.0'
     compile project(':duer')
     compile project(':aiui')

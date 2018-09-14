@@ -17,7 +17,8 @@
             </intent-filter>
         </activity>
 
-
+        <activity android:name=".PhotoViewPagerActivity"/>
+        <activity android:name=".SpeakStoryActivity"/>
         <!-- 正式发布时，请替换成您自己的appId 本demo的appId会不定时下线 -->
         <meta-data
             android:name="com.baidu.speech.APP_ID"

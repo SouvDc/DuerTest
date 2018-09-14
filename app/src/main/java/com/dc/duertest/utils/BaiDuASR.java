@@ -116,8 +116,10 @@ public class BaiDuASR implements EventListener {
             // 语音识别过程
             RecogResult result = RecogResult.parseJson(params);
             String[] strs = result.getResultsRecognition();
-            mListener.asrResult(strs[strs.length - 1], false);
-            Log.e(TAG, "asrPartial = " + strs[0]);
+            if(strs != null && strs.length > 0) {
+                mListener.asrResult(strs[strs.length - 1], false);
+                Log.e(TAG, "asrPartial = " + strs[0]);
+            }
         } else if(name.equals(SpeechConstant.CALLBACK_EVENT_ASR_FINISH)){
             //  识别结束
             mListener.asrFinish(true);

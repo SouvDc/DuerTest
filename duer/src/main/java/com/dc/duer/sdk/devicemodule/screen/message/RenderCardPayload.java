@@ -21,7 +21,7 @@ public class RenderCardPayload extends TokenPayload {
         TextCard,
         StandardCard,
         ListCard,
-        ImageListCard,
+        ImageListCard
     }
 
     public static final class LinkStructure implements Parcelable, Serializable {

@@ -17,11 +17,13 @@ import android.widget.Toast;
 import com.cnbot.aiui.AIUINlpUtil;
 import com.cnbot.aiui.bean.AiuiNlpResult;
 import com.dc.duer.sdk.devicemodule.screen.message.RenderCardPayload;
-import com.dc.duertest.bean.Msg;
+import com.dc.duertest.bean.MsgBean;
 import com.dc.duertest.listener.SpeechAsrListener;
 import com.dc.duertest.utils.BaiDuASR;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import butterknife.BindView;
@@ -52,8 +54,10 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     Button btnSend;
 
     //定义对象
-    private final List<Msg> history = new ArrayList<>();
+//    private final List<MsgBean> history = new ArrayList<>();
     private ChatHistoryAdapter adapter;
+    private List<MsgBean> msgBeanList = null;
+
     private BaiDuASR baiduASR = null;
     private DuerUtils duerUtils = null;
 
@@ -73,6 +77,8 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
 
 
     private void init() {
+
+
         //初始化ASR
         baiduASR = new BaiDuASR(MainActivity.this);
         baiduASR.initASR();
@@ -109,10 +115,11 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     }
 
     private void initView() {
+        msgBeanList = new ArrayList<>();
 
         mainRecyclerView.setHasFixedSize(true);
         mainRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new ChatHistoryAdapter(this, history);
+        adapter = new ChatHistoryAdapter(this, msgBeanList);
         mainRecyclerView.setAdapter(adapter);
     }
 
@@ -228,8 +235,9 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
         if(rc == 4){
             duerUtils.sendDuer(inputStr);
         } else {
-            // AIUI语义结果
-            notifyOutputMsg(result);
+            // AIUI语义结果 
+            // TODO: 2018/9/14 为了兼容DuerOS的平台效果暂时，需要传入DuerOS结果对象，因AIUI没有该对象所以传null，注意在解析的时候需要做判断
+            notifyOutputMsg(null, result);
             baiduASR.stopASR();
            duerUtils.startSpeech(result);
         }
@@ -239,11 +247,17 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     public void onRenDerCardResult(RenderCardPayload renderCardPayload) {
         Log.e(TAG, "onRenDerCardResult: " + renderCardPayload.content);
 //        btnVoiceInput.setText("播报中...");
+        RenderCardPayload.Type type = renderCardPayload.type;
+
         String content = renderCardPayload.content;
         if(TextUtils.isEmpty(content)){
             content = "暂不支持该技能";
         }
-        notifyOutputMsg(content);
+
+        notifyOutputMsg(renderCardPayload, content);
+
+        // 判断type
+
 
     }
 
@@ -255,10 +269,17 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
      */
     private void notifyInputMsg(String input) {
         mainInputEdit.setText("");
-        history.add(new Msg(input, Msg.INPUT_TYPE));
-        adapter.notifyDataSetChanged();
-        mainRecyclerView.scrollToPosition(history.size() - 1);
 
+
+        Log.e(TAG, "识别内容 = " + input);
+        MsgBean<String> msgBean = new MsgBean(input,  MsgBean.INPUT_TYPE);
+        Date now = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        msgBean.setChatTime(sdf.format(now));
+        msgBeanList.add(msgBean);
+        adapter.notifyItemInserted(msgBeanList.size() - 1);
+        adapter.notifyItemRangeChanged(0,msgBeanList.size());
+        mainRecyclerView.scrollToPosition(adapter.getItemCount() - 1);
     }
 
     /**
@@ -266,20 +287,34 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
      *
      * @param output 灵聚nlp或者讯飞nlp识别结果
      */
-    private void notifyOutputMsg(String output) {
+    private void notifyOutputMsg(RenderCardPayload type ,String output) {
         btnVoiceInput.setText("点击说话...");
-        history.add(new Msg(output, Msg.OUTPUT_TYPE));
+   /*     history.add(new MsgBean(output, MsgBean.OUTPUT_TYPE));
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 adapter.notifyDataSetChanged();
                 mainRecyclerView.scrollToPosition(history.size() - 1);
             }
-        });
+        });*/
 
         // TODO: dc 2018/7/27 连续对话，test
         /*if (ConstantToken.NLPMODEL.equals(CONTINUITY)) {
             baiduASR.startASR();
         }*/
+
+
+
+
+        String content = output;
+        MsgBean<String> msgBean = new MsgBean(output,type, MsgBean.OUTPUT_TYPE);
+        Date now = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        msgBean.setChatTime(sdf.format(now));
+        msgBeanList.add(msgBean);
+        Log.e(TAG, "item size " + (adapter.getItemCount() - 1));
+        adapter.notifyItemInserted(msgBeanList.size() - 1);
+        adapter.notifyItemRangeChanged(0, msgBeanList.size());
+        mainRecyclerView.scrollToPosition(adapter.getItemCount() - 1);
     }
 }

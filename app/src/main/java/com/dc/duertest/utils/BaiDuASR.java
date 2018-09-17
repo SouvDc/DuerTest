@@ -132,12 +132,18 @@ public class BaiDuASR implements EventListener {
                     /*if(ConstantToken.NLPMODEL.equals(CONTINUITY)){
                         startASR();
                     }*/
-                } else if(asrErrorBean != null && asrErrorBean.getSub_error() == 3101){
+                } else if(asrErrorBean != null && asrErrorBean.getSub_error() == 3001){
                     //录音机打开失败
-                    Log.e(TAG, "在这里启动识别");
-                    /*if(ConstantToken.NLPMODEL.equals(CONTINUITY)){
-                        startASR();
-                    }*/
+
+                } else if(asrErrorBean != null && asrErrorBean.getSub_error() == 2100){
+                    //本地网络不可用
+
+                } else if(asrErrorBean != null && asrErrorBean.getSub_error() == 1005){
+                    //下行网络连接超时
+
+                } else if(asrErrorBean != null && asrErrorBean.getSub_error() == 2005){
+                    //下行网络读取失败
+
                 }
             } catch (Exception e){
                 e.printStackTrace();

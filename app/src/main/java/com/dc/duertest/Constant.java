@@ -9,4 +9,7 @@ package com.dc.duertest;
 public class Constant {
     // demo使用的CLIENT_ID，正式产品请用自己申请的CLIENT_ID、PID
     public static final String CLIENT_ID = BuildConfig.CLIENT_ID;
+
+    // 是否联系对话
+    public static boolean CONTINUITY = false;
 }

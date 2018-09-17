@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!--<TextView
+        android:id="@+id/tv_nlp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="50dp"
+        android:text="选择NLP厂商"
+        android:textSize="18sp"/>
+
+    <Spinner
+        android:id="@+id/sn_nlp"
+        android:layout_toEndOf="@+id/tv_nlp"
+        android:layout_alignTop="@id/tv_nlp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+-->
+    <CheckBox
+        android:id="@+id/xunfei_continuous_check"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="启动语音连续交互模式"
+        android:layout_margin="20dp"
+        />
+
+    <Button
+        android:id="@+id/btn_submit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="60dp"
+        android:text="提交修改"/>
+
+</RelativeLayout>

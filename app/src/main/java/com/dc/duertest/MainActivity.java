@@ -1,9 +1,11 @@
 package com.dc.duertest;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -20,6 +22,7 @@ import com.dc.duer.sdk.devicemodule.screen.message.RenderCardPayload;
 import com.dc.duertest.bean.MsgBean;
 import com.dc.duertest.listener.SpeechAsrListener;
 import com.dc.duertest.utils.BaiDuASR;
+import com.dc.duertest.utils.SharedPreferenceUtil;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -30,12 +33,14 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
+import static com.dc.duertest.Constant.CONTINUITY;
+
 
 public class MainActivity extends AppCompatActivity implements DuerUtils.RenderCardPayLoadResultListener, SpeechAsrListener,
-        AiuiNlpResult{
+        AiuiNlpResult {
     private static final String TAG = MainActivity.class.getSimpleName();
     @BindView(R.id.main_recyclerView)
-    android.support.v7.widget.RecyclerView mainRecyclerView;
+    RecyclerView mainRecyclerView;
     @BindView(R.id.tv_asr_result)
     TextView tvAsrResult;
     @BindView(R.id.btn_voice_input)
@@ -52,6 +57,8 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     EditText etInput;
     @BindView(R.id.btn_send)
     Button btnSend;
+    @BindView(R.id.btn_admin_config)
+    Button btnAdminConfig;
 
     //定义对象
 //    private final List<MsgBean> history = new ArrayList<>();
@@ -63,6 +70,7 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
 
     //属性定义
     private String inputStr = ""; //语音识别或者手动输入需要查询的内容
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
 
 
     private void init() {
-
+        Constant.CONTINUITY = (boolean) SharedPreferenceUtil.get(MainActivity.this, "xunfei_model", false);
 
         //初始化ASR
         baiduASR = new BaiDuASR(MainActivity.this);
@@ -124,6 +132,13 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     }
 
 
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        Constant.CONTINUITY = (boolean) SharedPreferenceUtil.get(MainActivity.this, "xunfei_model", false);
+        Log.e(TAG, "连续对话 = " + Constant.CONTINUITY);
+    }
+
     /**
      * @descriptoin 开始录音
      * @author dc
@@ -139,9 +154,10 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     protected void onDestroy() {
         super.onDestroy();
         duerUtils.release();
+        baiduASR.releaseASR();
     }
 
-    @OnClick({R.id.btn_voice_input, R.id.main_send_bt, R.id.main_stop_asr_bt, R.id.btn_send})
+    @OnClick({R.id.btn_voice_input, R.id.main_send_bt, R.id.main_stop_asr_bt, R.id.btn_send,R.id.btn_admin_config})
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.btn_voice_input:
@@ -151,6 +167,9 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
             case R.id.main_send_bt:
                 break;
             case R.id.main_stop_asr_bt:
+                baiduASR.stopASR();
+                btnVoiceInput.setText("点击说话");
+//                duerUtils.stopSpeech();
                 break;
             case R.id.btn_send:
                 String inputText = etInput.getText().toString().trim();
@@ -163,8 +182,10 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context
                         .INPUT_METHOD_SERVICE);
                 imm.hideSoftInputFromWindow(etInput.getWindowToken(), 0);
-
                 duerUtils.sendDuer(inputText);
+                break;
+            case R.id.btn_admin_config:
+                startActivity(new Intent(MainActivity.this, ConfigurationActivity.class));
                 break;
         }
     }
@@ -173,10 +194,10 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     public void asrResult(String asr, boolean isFinal) {
         //识别结果、
         inputStr = asr;
-        if(isFinal){
+        if (isFinal) {
             tvAsrResult.setText(inputStr);
-//            duerUtils.sendDuer(inputStr);
-            aiuiNlp(inputStr);
+            duerUtils.sendDuer(inputStr);
+//            aiuiNlp(inputStr);
             notifyInputMsg(inputStr);
         } else {
             tvAsrResult.setText(inputStr);
@@ -232,14 +253,14 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     @Override
     public void aiuiNlpResult(int rc, String result) {
         Log.e(TAG, "AIUI_Result = " + result + "    rc = " + rc);
-        if(rc == 4){
+        if (rc == 4) {
             duerUtils.sendDuer(inputStr);
         } else {
             // AIUI语义结果 
             // TODO: 2018/9/14 为了兼容DuerOS的平台效果暂时，需要传入DuerOS结果对象，因AIUI没有该对象所以传null，注意在解析的时候需要做判断
             notifyOutputMsg(null, result);
-            baiduASR.stopASR();
-           duerUtils.startSpeech(result);
+
+            duerUtils.startSpeech(result);
         }
     }
 
@@ -250,7 +271,7 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
         RenderCardPayload.Type type = renderCardPayload.type;
 
         String content = renderCardPayload.content;
-        if(TextUtils.isEmpty(content)){
+        if (TextUtils.isEmpty(content)) {
             content = "暂不支持该技能";
         }
 
@@ -272,13 +293,13 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
 
 
         Log.e(TAG, "识别内容 = " + input);
-        MsgBean<String> msgBean = new MsgBean(input,  MsgBean.INPUT_TYPE);
+        MsgBean<String> msgBean = new MsgBean(input, MsgBean.INPUT_TYPE);
         Date now = new Date();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         msgBean.setChatTime(sdf.format(now));
         msgBeanList.add(msgBean);
         adapter.notifyItemInserted(msgBeanList.size() - 1);
-        adapter.notifyItemRangeChanged(0,msgBeanList.size());
+        adapter.notifyItemRangeChanged(0, msgBeanList.size());
         mainRecyclerView.scrollToPosition(adapter.getItemCount() - 1);
     }
 
@@ -287,27 +308,16 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
      *
      * @param output 灵聚nlp或者讯飞nlp识别结果
      */
-    private void notifyOutputMsg(RenderCardPayload type ,String output) {
+    private void notifyOutputMsg(RenderCardPayload type, String output) {
         btnVoiceInput.setText("点击说话...");
-   /*     history.add(new MsgBean(output, MsgBean.OUTPUT_TYPE));
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                adapter.notifyDataSetChanged();
-                mainRecyclerView.scrollToPosition(history.size() - 1);
-            }
-        });*/
 
-        // TODO: dc 2018/7/27 连续对话，test
-        /*if (ConstantToken.NLPMODEL.equals(CONTINUITY)) {
+        // TODO: 2018/9/17 是否联系对话
+        if (CONTINUITY) {
             baiduASR.startASR();
-        }*/
-
-
-
+        }
 
         String content = output;
-        MsgBean<String> msgBean = new MsgBean(output,type, MsgBean.OUTPUT_TYPE);
+        MsgBean<String> msgBean = new MsgBean(output, type, MsgBean.OUTPUT_TYPE);
         Date now = new Date();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         msgBean.setChatTime(sdf.format(now));
@@ -317,4 +327,6 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
         adapter.notifyItemRangeChanged(0, msgBeanList.size());
         mainRecyclerView.scrollToPosition(adapter.getItemCount() - 1);
     }
+
+
 }

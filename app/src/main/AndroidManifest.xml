@@ -2,40 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.dc.duertest">
 
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme.NoActionBar">
-        <activity android:name=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <activity android:name=".PhotoViewPagerActivity"/>
-        <activity android:name=".SpeakStoryActivity"/>
-        <activity android:name=".ConfigurationActivity"/>
-        <!-- 正式发布时，请替换成您自己的appId 本demo的appId会不定时下线 -->
-        <meta-data
-            android:name="com.baidu.speech.APP_ID"
-            android:value="10733190" />
-        <meta-data
-            android:name="com.baidu.speech.API_KEY"
-            android:value="RRGE0rOZMgKb7zXNnsEpH7wG" />
-        <meta-data
-            android:name="com.baidu.speech.SECRET_KEY"
-            android:value="Qjfg9WVtuIFELvCDTtvKsBPUO7XjCGSp" />
-        <!-- 请确认集成后的包名是否正确，本demo的包名是com.baidu.speech.recognizerdemo，在build.gradle文件中查看 -->
-        <service
-            android:name="com.baidu.speech.VoiceRecognitionService"
-            android:exported="false" />
-    </application>
-
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -49,5 +15,54 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <application
+        android:name=".MyApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme.NoActionBar">
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".PhotoViewPagerActivity" />
+        <activity android:name=".SpeakStoryActivity" />
+        <activity android:name=".ConfigurationActivity">
+
+        </activity>
+        <!-- 正式发布时，请替换成您自己的appId 本demo的appId会不定时下线 -->
+        <meta-data
+            android:name="com.baidu.speech.APP_ID"
+            android:value="14414875" />
+        <meta-data
+            android:name="com.baidu.speech.API_KEY"
+            android:value="XR7Nk0c39ygHYlAkj4aRp2c2" />
+        <meta-data
+            android:name="com.baidu.speech.SECRET_KEY"
+            android:value="Pmh0ZXEzZoCTew5DHvjc7jmw6kun4Ih4" />
+        <!-- 请确认集成后的包名是否正确，本demo的包名是com.baidu.speech.recognizerdemo，在build.gradle文件中查看 -->
+        <service
+            android:name="com.baidu.speech.VoiceRecognitionService"
+            android:exported="false" />
+
+        <!-- KITT 唤醒 单独进程 -->
+
+        <service
+            android:name="com.baidu.duer.kitt.KittWakeUpService"
+            android:enabled="true"
+            android:process=":kittwakeup" />
+
+        <!--     <activity android:name=".MakeUpActivity"></activity>-->
+
+        <activity android:name=".WakeDemo">
+
+        </activity>
+    </application>
 
 </manifest>

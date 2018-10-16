@@ -10,13 +10,11 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "CLIENT_ID", "\"DZjH70daOnau7TIYoAQtci6uwnctbslk\"") //d8ITlI9aeTPaGcxKKsZit8tq
-        buildConfigField("int", "PID", "1704")
-        buildConfigField("String", "APP_KEY", "\"com.baidu.dumi.open.far\"")
-        buildConfigField("String", "APP_TITLE", "\"dcs-sdk-\"+com.baidu.duer.dcs.util.util.DcsGlobalConfig.VERSION_NAME")
-        buildConfigField("String", "TTS_APIKEY", "\"zYs2hGZyfV4GqDu1rTmWMbjqI2DMjG1b\"")
-        buildConfigField("String", "TTS_SERCERTKEY", "\"WEDIKCt4zAS9n5UYS6WvWmx4H3dIWTRw\"")
-        buildConfigField("String", "TTS_APPID", "\"10321182\"")
+        ndk {
+            abiFilters "armeabi", "armeabi-v7a", "x86", "mips"
+        }
+
+
     }
     buildTypes {
         release {
@@ -34,15 +32,15 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-
     //butterknife
     compile 'com.jakewharton:butterknife:8.4.0'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.4.0'
-
     compile 'com.github.bumptech.glide:glide:3.7.0'
-    compile 'com.bm.photoview:library:1.4.1' //图片显示
-
+    compile 'com.bm.photoview:library:1.4.1'
+    //图片显示
     compile 'com.google.code.gson:gson:2.8.0'
-    compile project(':duer')
-    compile project(':aiui')
+    compile project(path: ':serialport')
+    compile project(path: ':AIVoice:duer')
+    compile project(path: ':AIVoice:aiui')
+    implementation files('libs/Msc.jar')
 }

@@ -1,0 +1,69 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 26
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "CLIENT_ID", "\"DZjH70daOnau7TIYoAQtci6uwnctbslk\"") //d8ITlI9aeTPaGcxKKsZit8tq
+        buildConfigField("int", "PID", "1704")
+        buildConfigField("String", "APP_KEY", "\"com.baidu.dumi.open.far\"")
+        buildConfigField("String", "APP_TITLE", "\"dcs-sdk-\"+com.baidu.duer.dcs.util.util.DcsGlobalConfig.VERSION_NAME")
+        buildConfigField("String", "TTS_APIKEY", "\"zYs2hGZyfV4GqDu1rTmWMbjqI2DMjG1b\"")
+        buildConfigField("String", "TTS_SERCERTKEY", "\"WEDIKCt4zAS9n5UYS6WvWmx4H3dIWTRw\"")
+        buildConfigField("String", "TTS_APPID", "\"10321182\"")
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    compile 'com.android.support:support-annotations:25.3.1'
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
+    testCompile 'junit:junit:4.12'
+
+    // 百度url音频播放器
+//    compile name: 'bdplayer-release', ext: 'aar'
+    // 定位
+    compile project(':AIVoice:location')
+    // 可选-------
+
+    def jacksonVersion = '2.9.1'
+    compile "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    compile "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    compile "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+
+    implementation files('libs/commons-fileupload-1.3.2.jar')
+    implementation files('libs/commons-io-2.5.jar')
+    implementation files('libs/commons-lang3-3.4.jar')
+    implementation files('libs/crablite2.1.jar')
+    implementation files('libs/dcssdk-1.6.3.0-acl-release.jar')
+    implementation files('libs/fastjson-1.2.46.jar')
+    implementation files('libs/jlayer-1.0.1.jar')
+    implementation files('libs/localtts-2.3.2.jar')
+    implementation files('libs/okhttp-3.8.1.jar')
+    implementation files('libs/okio-1.14.0.jar')
+    implementation files('libs/speechv3.jar')
+    implementation files('libs/turbonet.jar')
+
+
+    compile 'com.android.support:multidex:1.0.3'
+
+    compile 'com.google.code.gson:gson:2.8.0'
+
+}

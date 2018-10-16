@@ -18,10 +18,14 @@ import android.widget.Toast;
 
 import com.cnbot.aiui.AIUINlpUtil;
 import com.cnbot.aiui.bean.AiuiNlpResult;
+import com.dc.duer.sdk.bean.MsgBean;
 import com.dc.duer.sdk.devicemodule.screen.message.RenderCardPayload;
-import com.dc.duertest.bean.MsgBean;
-import com.dc.duertest.listener.SpeechAsrListener;
-import com.dc.duertest.utils.BaiDuASR;
+import com.dc.duer.sdk.listener.SpeechAsrListener;
+import com.dc.duer.sdk.utils.BaiDuASR;
+import com.dc.duer.sdk.utils.BaiDuASRErrorCode;
+import com.dc.duer.sdk.utils.DuerUtils;
+import com.dc.duertest.utils.MakeUpUtils;
+import com.dc.duertest.utils.SerialPortUtil;
 import com.dc.duertest.utils.SharedPreferenceUtil;
 
 import java.text.SimpleDateFormat;
@@ -36,8 +40,8 @@ import butterknife.OnClick;
 import static com.dc.duertest.Constant.CONTINUITY;
 
 
-public class MainActivity extends AppCompatActivity implements DuerUtils.RenderCardPayLoadResultListener, SpeechAsrListener,
-        AiuiNlpResult {
+public class MainActivity extends AppCompatActivity implements DuerUtils.RenderCardPayLoadResultListener,
+        AiuiNlpResult, DuerUtils.DuerDcsErrorListener, SerialPortUtil.DataReceivedListener{
     private static final String TAG = MainActivity.class.getSimpleName();
     @BindView(R.id.main_recyclerView)
     RecyclerView mainRecyclerView;
@@ -61,13 +65,13 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     Button btnAdminConfig;
 
     //定义对象
-//    private final List<MsgBean> history = new ArrayList<>();
     private ChatHistoryAdapter adapter;
     private List<MsgBean> msgBeanList = null;
 
     private BaiDuASR baiduASR = null;
     private DuerUtils duerUtils = null;
-
+    private MakeUpUtils makeUpUtils = null;
+    private SerialPortUtil serialPortUtil = null;
     //属性定义
     private String inputStr = ""; //语音识别或者手动输入需要查询的内容
 
@@ -79,36 +83,143 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
 
         initView();
         init();
-
         initListener();
     }
 
+    /**
+     * @descriptoin	初始化界面
+     * @author	dc
+     * @date 2018/10/11 10:51
+     */
+    private void initView() {
+        msgBeanList = new ArrayList<>();
 
+        mainRecyclerView.setHasFixedSize(true);
+        mainRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new ChatHistoryAdapter(this, msgBeanList);
+        mainRecyclerView.setAdapter(adapter);
+    }
+
+    /**
+     * @descriptoin	初始化数据\对象
+     * @author	dc
+     * @date 2018/10/11 10:51
+     */
     private void init() {
+        //六麦唤醒
+        serialPortUtil = SerialPortUtil.getInstanll();
+        serialPortUtil.setDataReceivedListener(this);
+        boolean isOk = serialPortUtil.openSerailPort(Constant.FIVEMIC_SERIALPORT_BAUDRATE, Constant.FIVEMIC_SERIALPORT_PATH);
+        if (!isOk) {
+            Toast.makeText(MainActivity.this, "串口打开失败", Toast.LENGTH_LONG).show();
+        }
+        // 单麦唤醒
+          makeUpUtils = MakeUpUtils.getInstanll(MainActivity.this);
+        makeUpUtils.setMakeUpLinstener(new WakeUpListener());
+        makeUpUtils.initWakeUp();
+
         Constant.CONTINUITY = (boolean) SharedPreferenceUtil.get(MainActivity.this, "xunfei_model", false);
+        Log.e(TAG, "连续对话 = " + Constant.CONTINUITY);
 
         //初始化ASR
-        baiduASR = new BaiDuASR(MainActivity.this);
+        baiduASR = BaiDuASR.getInstanll(MainActivity.this);
+        //初始化语音识别
         baiduASR.initASR();
+        // 打开唤醒
+        Log.e(TAG, "onCreate open voide");
+        makeUpUtils.startWakeUp();
         //初始化DuerOS
-        duerUtils = new DuerUtils();
+        duerUtils = DuerUtils.getInstance();
+        duerUtils.addErrorListener(this);
         duerUtils.initSDK();
         duerUtils.sdkRun();
         duerUtils.setRenerCardListener(this);
 
-
+        // 初始化AIUI语音NLP
         AIUINlpUtil.getInstance(this).createAgent();
-
     }
 
+    /**
+     * @descriptoin	设置监听器
+     * @author	dc
+     * @date 2018/10/11 10:51
+     */
     private void initListener() {
-        BaiDuASR.setAsrListener(this);
+        // 语音识别状态监听器
+        baiduASR.setAsrListener(new SpeechAsrListener() {
+            @Override
+            public void asrResult(String asr, boolean isFinal) {
+                //识别结果、
+                inputStr = asr;
+                if (isFinal) {
+                    tvAsrResult.setText(inputStr);
+                    aiuiNlp(inputStr);
+                    notifyInputMsg(inputStr);
+                } else {
+                    tvAsrResult.setText(inputStr);
+                }
+                // TODO: 2018/10/16 如果是联系对话则不需要重复打开唤醒操作
+//                if (!CONTINUITY) {
+                    // todo 识别成功之后重新启动唤醒,在识别错误的情况下也需要做该操作
+                    makeUpUtils.startWakeUp();
+//                }
+                
+            }
 
+            @Override
+            public void asrRecording(boolean recording) {
+                if (recording) {
+                    btnVoiceInput.setText("录音中...");
+                }
+            }
+
+            @Override
+            public void asrRecognizing(boolean recognizing) {
+                if (recognizing) {
+                    btnVoiceInput.setText("识别中...");
+                }
+            }
+
+            @Override
+            public void asrThinking(boolean thinking) {
+                if (thinking) {
+                    btnVoiceInput.setText("思考中...");
+                }
+            }
+
+            @Override
+            public void asrFinish(boolean finish) {
+                if (finish) {
+                    btnVoiceInput.setText("点击说话");
+
+                }
+            }
+
+        });
+        // 语音识别错误码监听器
+        baiduASR.setAsrErrorListener(new BaiDuASR.BaiduAsrErrorListener() {
+
+            @Override
+            public void baiduAsrError(int errorCode) {
+                // 得到识别错误码
+                final String finalError  = BaiDuASRErrorCode.asrErrorCode(errorCode);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, finalError, Toast.LENGTH_SHORT).show();
+                    }
+                });
+                // todo 识别成功之后重新启动唤醒,在识别错误的情况下也需要做该操作
+                makeUpUtils.startWakeUp();
+
+            }
+        });
         duerUtils.setRenerCardListener(this);
 
         //初始化AIUI
         AIUINlpUtil.getInstance(this).setListener(this);
 
+        // 语音合成状态监听器
         duerUtils.addRequestListener(new DuerUtils.DcsRequestBodyStatusListener() {
             @Override
             public void speechStarted() {
@@ -122,21 +233,20 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
         });
     }
 
-    private void initView() {
-        msgBeanList = new ArrayList<>();
 
-        mainRecyclerView.setHasFixedSize(true);
-        mainRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new ChatHistoryAdapter(this, msgBeanList);
-        mainRecyclerView.setAdapter(adapter);
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+
     }
-
 
     @Override
     protected void onRestart() {
         super.onRestart();
         Constant.CONTINUITY = (boolean) SharedPreferenceUtil.get(MainActivity.this, "xunfei_model", false);
         Log.e(TAG, "连续对话 = " + Constant.CONTINUITY);
+        makeUpUtils.startWakeUp();
     }
 
     /**
@@ -145,17 +255,14 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
      * @date 2018/7/26 10:45
      */
     private void startVoice() {
+        makeUpUtils.stopWakeUp();
         duerUtils.stopSpeech();
+        baiduASR.stopASR();
         baiduASR.startASR();
         btnVoiceInput.setText("开始录音");
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        duerUtils.release();
-        baiduASR.releaseASR();
-    }
+
 
     @OnClick({R.id.btn_voice_input, R.id.main_send_bt, R.id.main_stop_asr_bt, R.id.btn_send,R.id.btn_admin_config})
     public void onClick(View view) {
@@ -168,8 +275,9 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
                 break;
             case R.id.main_stop_asr_bt:
                 baiduASR.stopASR();
+                duerUtils.stopSpeech();
                 btnVoiceInput.setText("点击说话");
-//                duerUtils.stopSpeech();
+
                 break;
             case R.id.btn_send:
                 String inputText = etInput.getText().toString().trim();
@@ -190,51 +298,6 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
         }
     }
 
-    @Override
-    public void asrResult(String asr, boolean isFinal) {
-        //识别结果、
-        inputStr = asr;
-        if (isFinal) {
-            tvAsrResult.setText(inputStr);
-            duerUtils.sendDuer(inputStr);
-//            aiuiNlp(inputStr);
-            notifyInputMsg(inputStr);
-        } else {
-            tvAsrResult.setText(inputStr);
-        }
-    }
-
-    @Override
-    public void asrRecording(boolean recording) {
-        if (recording) {
-            btnVoiceInput.setText("录音中...");
-        }
-    }
-
-    @Override
-    public void asrRecognizing(boolean recognizing) {
-        if (recognizing) {
-            btnVoiceInput.setText("识别中...");
-        }
-    }
-
-    @Override
-    public void asrThinking(boolean thinking) {
-        if (thinking) {
-            btnVoiceInput.setText("思考中...");
-        }
-    }
-
-    @Override
-    public void asrFinish(boolean finish) {
-        if (finish) {
-            btnVoiceInput.setText("点击说话");
-            // TODO: dc 2018/7/27 连续对话，test
-            /*if(ConstantToken.NLPMODEL.equals(CONTINUITY)){
-                baiduASR.startASR();
-            }*/
-        }
-    }
 
     /**
      * 讯飞nlp
@@ -267,8 +330,6 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     @Override
     public void onRenDerCardResult(RenderCardPayload renderCardPayload) {
         Log.e(TAG, "onRenDerCardResult: " + renderCardPayload.content);
-//        btnVoiceInput.setText("播报中...");
-        RenderCardPayload.Type type = renderCardPayload.type;
 
         String content = renderCardPayload.content;
         if (TextUtils.isEmpty(content)) {
@@ -276,9 +337,6 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
         }
 
         notifyOutputMsg(renderCardPayload, content);
-
-        // 判断type
-
 
     }
 
@@ -290,7 +348,6 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
      */
     private void notifyInputMsg(String input) {
         mainInputEdit.setText("");
-
 
         Log.e(TAG, "识别内容 = " + input);
         MsgBean<String> msgBean = new MsgBean(input, MsgBean.INPUT_TYPE);
@@ -310,13 +367,10 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
      */
     private void notifyOutputMsg(RenderCardPayload type, String output) {
         btnVoiceInput.setText("点击说话...");
-
-        // TODO: 2018/9/17 是否联系对话
         if (CONTINUITY) {
-            baiduASR.startASR();
+            startVoice();
         }
 
-        String content = output;
         MsgBean<String> msgBean = new MsgBean(output, type, MsgBean.OUTPUT_TYPE);
         Date now = new Date();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -329,4 +383,66 @@ public class MainActivity extends AppCompatActivity implements DuerUtils.RenderC
     }
 
 
+
+    @Override
+    public void duerErrorCode(int errorCode) {
+        final String finalError  = BaiDuASRErrorCode.asrErrorCode(errorCode);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, finalError, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Override
+    public void duerLoginCode(final String loginCode) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, loginCode, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Override
+    public void onDataReceived(final String angle) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, "唤醒角度 = " + angle, Toast.LENGTH_SHORT).show();
+                startVoice();
+            }
+        });
+    }
+
+    /***************************** 唤醒监听器  ****************************/
+    public class WakeUpListener implements MakeUpUtils.MakeUpEventLinstener {
+
+        @Override
+        public void makeUpEvent(int id) {
+            Log.e(TAG, "唤醒成功 = " + id);
+            startVoice();
+        }
+
+        @Override
+        public void makeUpEventError(int error) {
+            Log.e(TAG, "唤醒失败 = " + error);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(duerUtils != null){
+            duerUtils.release();
+        }
+        if(baiduASR != null) {
+            baiduASR.releaseASR();
+        }
+        if(makeUpUtils != null){
+            makeUpUtils.release();
+        }
+
+    }
 }

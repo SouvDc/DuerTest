@@ -8,10 +8,12 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/aiui" />
+            <option value="$PROJECT_DIR$/AIVoice" />
+            <option value="$PROJECT_DIR$/AIVoice/aiui" />
+            <option value="$PROJECT_DIR$/AIVoice/duer" />
+            <option value="$PROJECT_DIR$/AIVoice/location" />
             <option value="$PROJECT_DIR$/app" />
-            <option value="$PROJECT_DIR$/duer" />
-            <option value="$PROJECT_DIR$/location" />
+            <option value="$PROJECT_DIR$/serialport" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />

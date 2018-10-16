@@ -13,8 +13,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.dc.duer.sdk.bean.MsgBean;
 import com.dc.duer.sdk.devicemodule.screen.message.RenderCardPayload;
-import com.dc.duertest.bean.MsgBean;
 import com.dc.duertest.weight.TextImageView;
 import com.google.gson.Gson;
 
@@ -78,7 +78,7 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<ChatHistoryAdapter.
                 if(renderCardPayload == null){
                     // AIUI结果返回
                     String text = msg.getContent();
-                    Log.e(TAG, "textCardBean = " + text);
+//                    Log.e(TAG, "textCardBean = " + text);
                     holder.tvContent.setVisibility(View.VISIBLE);
                     holder.tvContentImg.setVisibility(View.GONE);
                     holder.contentTvimg.setVisibility(View.GONE);

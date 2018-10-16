@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">DuerTest</string>
+    <string name="app_id">56c3d3bd</string>
+    <string name="wake_demo_hint">请点击“开始唤醒”后读出您在开放平台购买的唤醒词，当引擎计算得分大于您设置的门限值时，即可进行唤醒。</string>
 
     <string name="inputed_text_cannot_be_empty">输入的内容不能为空</string>
 
